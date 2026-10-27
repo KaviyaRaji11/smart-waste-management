@@ -110,7 +110,7 @@ exports.searchPlaces = async (req, res) => {
       params: {
         ...KEY,
         q,
-        format: "jsonv2",
+        format: "json",
         addressdetails: 1,
         namedetails: 1,
         limit: 6,

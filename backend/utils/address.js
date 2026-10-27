@@ -44,7 +44,7 @@ function formatAddress(data = {}) {
 
   // Name of the building / institution at this exact point, if any
   let place = "";
-  if (data.name && !ROAD_CATEGORIES.has(data.category) && data.name.toLowerCase() !== road.toLowerCase()) {
+    if (data.name && !ROAD_CATEGORIES.has(data.category || data.class) && data.name.toLowerCase() !== road.toLowerCase()) {
     place = data.name;
   } else {
     for (const k of POI_KEYS) {
