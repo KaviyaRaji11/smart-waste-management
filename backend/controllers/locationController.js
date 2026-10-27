@@ -1,10 +1,15 @@
 const axios = require("axios");
 const { formatAddress } = require("../utils/address");
 
-const NOMINATIM = "https://nominatim.openstreetmap.org";
+// Use LocationIQ when a key is set (works from cloud hosts like Render);
+// otherwise fall back to the free Nominatim service (fine for local dev).
+const BASE = process.env.LOCATIONIQ_KEY
+  ? "https://us1.locationiq.com/v1"
+  : "https://nominatim.openstreetmap.org";
+const KEY = process.env.LOCATIONIQ_KEY ? { key: process.env.LOCATIONIQ_KEY } : {};
 const HEADERS = { "User-Agent": "Smart-Waste-Management-System/1.0 (college project)" };
 
-// Small in-memory cache so repeated pin drags do not hammer the free OSM service
+// Small in-memory cache so repeated pin drags do not hammer the geocoding service
 const CACHE_MS = 10 * 60 * 1000;
 const cache = new Map();
 const cacheGet = (key) => {
@@ -42,12 +47,13 @@ exports.reverseGeocode = async (req, res) => {
     const cached = cacheGet(key);
     if (cached) return res.json(cached);
 
-    // Try street level first; if OSM has no street there, widen the search so
+    // Try street level first; if there is no street there, widen the search so
     // the nearest road / neighbourhood is returned instead of "Not found".
     let data = null;
     for (const zoom of [18, 17, 16]) {
-      const response = await axios.get(`${NOMINATIM}/reverse`, {
+      const response = await axios.get(`${BASE}/reverse`, {
         params: {
+          ...KEY,
           lat: latitude,
           lon: longitude,
           format: "jsonv2",
@@ -100,8 +106,9 @@ exports.searchPlaces = async (req, res) => {
     const cached = cacheGet(key);
     if (cached) return res.json(cached);
 
-    const response = await axios.get(`${NOMINATIM}/search`, {
+    const response = await axios.get(`${BASE}/search`, {
       params: {
+        ...KEY,
         q,
         format: "jsonv2",
         addressdetails: 1,
@@ -126,6 +133,9 @@ exports.searchPlaces = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("Place search error:", error.response?.data || error.message);
+    if (error.response?.status === 429) {
+      return res.status(429).json({ message: "Too many lookups. Please wait a moment and try again." });
+    }
     res.status(500).json({ message: "Unable to search places right now" });
   }
 };
